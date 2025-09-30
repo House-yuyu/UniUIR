@@ -94,7 +94,7 @@ as An All-in-One Learner</h1>
               </span>
 
               <span class="author-block">
-              <a href="https://scholar.google.com/citations?user=BLKHwNwAAAAJ" target="_blank">Lefei Zhang</a><sup>1,📧</sup>
+              <a href="https://scholar.google.com/citations?user=BLKHwNwAAAAJ" target="_blank">Lefei Zhang</a><sup>1,📧</sup>,
               </span>
 
               <span class="author-block">
@@ -165,14 +165,13 @@ as An All-in-One Learner</h1>
 <section class="hero teaser">
   <div class="container is-max-desktop">
     <div class="hero-body">
-      <h2 class="title is-3">Perform Better in All-in-one Image Restoration</h2>
       <!-- <video poster="" id="tree" autoplay controls muted loop height="100%">
         <source src="static/videos/banner_video.mp4"
         type="video/mp4">
       </video> -->
       <div class="item">
         <!-- Your image here -->
-        <center><img src="fig\radar.png" alt="MY ALT TEXT" width="600px" height="600px"/></center>
+        <center><img src="fig\UIR_motivation.png" alt="MY ALT TEXT" width="600px" height="600px"/></center>
         <h2 class="subtitle has-text-lefted">
         PSNR comparisons with state-of-the-art methods across two common scenarios. <br>* denotes results obtained under “Noise+Haze+Rain+Blur+Low-light” training setting, while unmarked results are from “Noise+Haze+Rain” training setting.
         </h2>
@@ -190,7 +189,16 @@ as An All-in-One Learner</h1>
         <h2 class="title is-3">Abstract</h2>
         <div class="content has-text-justified">
           <p>
-            The limitations of task-specific and general image restoration methods for specific degradation have prompted the development of all-in-one image restoration techniques. However, the diversity of patterns among multiple degradation, along with the significant uncertainties in mapping between degraded images of different severities and their corresponding undistorted versions, pose significant challenges to the all-in-one restoration tasks. To address these challenges, we propose <b>Perceive-IR</b>, an all-in-one image restorer designed to <b>achieve fine-grained quality control that enables restored images to more closely resemble their undistorted counterparts, regardless of the type or severity of degradation</b>. Specifically, Perceive-IR contains two stages: (1) prompt learning stage and (2) restoration stage. In the prompt learning stage, we leverage prompt learning to acquire a finegrained quality perceiver capable of distinguishing three-tier quality levels by constraining the prompt-image similarity in the CLIP perception space. Subsequently, this quality perceiver and difficulty-adaptive perceptual loss are integrated as a qualityaware learning strategy to realize fine-grained quality control in restoration stage. For the restoration stage, a semantic guidance module (SGM) and compact feature extraction (CFE) are proposed to further promote the restoration process by utilizing the robust semantic information from the pre-trained large scale vision models and distinguishing degradation-specific features. Extensive experiments demonstrate that our PerceiveIR outperforms state-of-the-art methods in all-in-one image restoration tasks and exhibit superior generalization ability when dealing with unseen tasks.
+            Existing underwater image restoration (UIR) methods generally only handle color distortion or jointly address color and haze issues, but they often overlook the more complex
+degradations that can occur in underwater scenes. To address this limitation, we propose a Universal Underwater Image Restoration method, termed as UniUIR, considering the complex scenario of
+real-world underwater mixed distortions as an all-in-one manner. To disentangle degradation-specific effects and capture their inter-correlations, we propose the Mamba Mixture-of-Experts
+module (MMoEM). Each expert specializes in distinct aspects of degradation, while gating mechanism dynamically routes features to appropriate experts. This design enables collaborative
+prior extraction and preserves global context, all within linear computational complexity. Building upon this foundation, to enhance degradation representation and address the task conflicts
+that arise when handling multiple types of degradation, we introduce the spatial-frequency prior generator. This module extracts degradation prior information in both spatial and
+frequency domains, and adaptively selects the most appropriate task-specific prompts based on image content, thereby improving the accuracy of image restoration. Finally, to more effectively
+address complex, region-dependent distortions in UIR task, we incorporate depth information derived from a large-scale pre-trained depth prediction model, thereby enabling the network
+to perceive and leverage depth variations across different image regions to handle localized degradation. Extensive experiments demonstrate that UniUIR can produce more attractive results
+across qualitative and quantitative comparisons, and shows strong generalization than state-of-the-art methods.
           </p>
         </div>
       </div>
@@ -207,10 +215,8 @@ as An All-in-One Learner</h1>
 <section class="hero is-small">
   <div class="hero-body">
     <div class="container">
-      <h2 class="title is-3">Two-stage Framework</h2>
       <div id="results-carousel" class="carousel results-carousel">
        <div class="item">
-        <h3 class="title is-4">(1) Prompt Learning Stage</h3>
         <!-- Your image here -->
         <img src="fig\PerceiveIR_Stage1.png" alt="MY ALT TEXT"/>
         <h2 class="subtitle has-text-lefted">
@@ -232,45 +238,22 @@ as An All-in-One Learner</h1>
 <!-- End image carousel -->
 
 
-<section class="hero teaser is-light">
-  <div class="container is-max-desktop">
-    <div class="hero-body">
-      <h2 class="title is-3">Quality-aware Learning Strategy</h2>
-      <!-- <video poster="" id="tree" autoplay controls muted loop height="100%">
-        <source src="static/videos/banner_video.mp4"
-        type="video/mp4">
-      </video> -->
-      <div class="item">
-        <!-- Your image here -->
-        <img src="fig\PerceiveIR_Loss.png" alt="MY ALT TEXT" width="600px" height="600px"/>
-        <h2 class="subtitle has-text-centered">
-        (a) The CLIP-aware loss; <br>(b) The difficulty-adaptive perceptual loss.
-        </h2>
-      </div>
-    </div>
-  </div>
-</section>
-
-
 
 <!-- Image carousel -->
 <section class="hero is-small">
   <div class="hero-body">
     <div class="container">
-      <h2 class="title is-3">Visual Comparisons</h2>
       <div id="results-carousel" class="carousel results-carousel">
        <div class="item">
-        <h3 class="title is-4">All-in-one Results</h3>
         <!-- Your image here -->
-        <img src="fig\multi_degradation.png" alt="MY ALT TEXT"/>
+        <img src="fig\vis1.png" alt="MY ALT TEXT"/>
         <h2 class="subtitle has-text-centered">
           Visual comparisons of Perceive-IR with state-of-the-art all-in-one methods for All-in-One (“N+H+R”) setting. Zoom-in for best view.
         </h2>
       </div>
       <div class="item">
-        <h3 class="title is-4">Single-task Results</h3>
         <!-- Your image here -->
-        <img src="fig\3_single_task_visual.png" alt="MY ALT TEXT"/>
+        <img src="fig\vis_noref.png" alt="MY ALT TEXT"/>
         <h2 class="subtitle has-text-centered">
           Visual comparisons of Perceive-IR with state-of-the-art all-in-one methods for One-by-One setting. Zoom-in for best view.
         </h2>
@@ -287,20 +270,17 @@ as An All-in-One Learner</h1>
 <section class="hero is-small is-light">
   <div class="hero-body">
     <div class="container">
-      <h2 class="title is-3">Discussion on Losses</h2>
       <div id="results-carousel" class="carousel results-carousel">
        <div class="item">
-        <h3 class="title is-4">Visual Results of Loss Combinations</h3>
         <!-- Your image here -->
-        <img src="fig\loss_visual.png" alt="MY ALT TEXT"/>
+        <img src="fig\vis_LLIE.png" alt="MY ALT TEXT"/>
         <h2 class="subtitle has-text-centered">
           Visual comparison of the restored images obtained using the individual loss schemes and the proposed scheme.
         </h2>
       </div>
       <div class="item">
-        <h3 class="title is-4">Performance under Different Loss Ratio</h3>
         <!-- Your image here -->
-        <img src="fig\loss_setting.png" alt="MY ALT TEXT"/>
+        <img src="fig\vis_sam.png" alt="MY ALT TEXT"/>
         <h2 class="subtitle has-text-centered">
           Comparison of PSNR and SSIM with different weight between different loss function on the Rain100L dataset. red, blue, and green are the weights λ1, λ2, and λ3, respectively.
         </h2>
@@ -366,12 +346,12 @@ as An All-in-One Learner</h1>
   <section class="section" id="BibTeX">
     <div class="container is-max-desktop content">
       <h2 class="title">BibTeX</h2>
-      <pre><code>@article{zhang2024perceive,
-        title={Perceive-IR: Learning to Perceive Degradation Better for All-in-One Image Restoration},
-        author={Zhang, Xu and Ma, Jiaqi and Wang, Guoli and Zhang, Qian and Zhang, Huan and Zhang, Lefei},
-        journal={arXiv preprint arXiv:2408.15994},
-        year={2024}
-      }</code></pre>
+      <pre><code>@article{zhang2025uniuir,
+  title={UniUIR: Considering Underwater Image Restoration as An All-in-One Learner},
+  author={Zhang, Xu and Zhang, Huan and Wang, Guoli and Zhang, Qian and Zhang, Lefei and Du, Bo},
+  journal={arXiv preprint arXiv:2501.12981},
+  year={2025}
+}</code></pre>
     </div>
 </section>
 <!--End BibTex citation -->
