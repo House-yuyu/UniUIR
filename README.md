@@ -10,10 +10,10 @@ This is the official PyTorch codes for the paper:
 > <sup>1</sup> Wuhan University, <sup>2</sup> Guangdong University of Technology, <sup>3</sup> Horizon Robotics<br>
 > <sup>📧</sup>Corresponding author.
 
-![teaser_img](fig/PerceiveIR_Stage2.png)
+![teaser_img](fig/overall.png)
 
 
-:star: If Perceive-IR is helpful to your images or projects, please help star this repo. Thank you! :point_left:
+:star: If UniUIR is helpful to your images or projects, please help star this repo. Thank you! :point_left:
 
 
 ## :book: Citation
