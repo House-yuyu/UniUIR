@@ -1,0 +1,10 @@
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch==2.4.1+cu121
+torchvision
+numpy
+pillow
+einops
+timm
+mamba-ssm>=2.3.1
+causal-conv1d>=1.4.0
+transformers>=4.40
