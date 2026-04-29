@@ -62,12 +62,12 @@ def parse_args():
     p.add_argument("--lambda_grad", type=float, default=0.5)
     p.add_argument("--depth_backend", type=str, default="hf", choices=["hf", "dummy"])
     p.add_argument("--log_every", type=int, default=100)
-    p.add_argument("--ckpt_every", type=int, default=5000)
-    p.add_argument("--val_every", type=int, default=5000)
+    p.add_argument("--ckpt_every", type=int, default=500)
+    p.add_argument("--val_every", type=int, default=500)
     p.add_argument("--debug_iters", type=int, default=0,
                    help="print tensor ranges for the first N iterations on rank 0")
     p.add_argument("--resume", type=str, default=None)
-    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--seed", type=int, default=1222)
     return p.parse_args()
 
 
@@ -127,6 +127,13 @@ def tensor_stats(x):
     return x.min().item(), x.max().item(), x.mean().item()
 
 
+def log_message(message, log_file=None):
+    print(message)
+    if log_file is not None:
+        log_file.write(message + "\n")
+        log_file.flush()
+
+
 def cycle(loader, sampler=None, start_epoch=0):
     epoch = start_epoch
     while True:
@@ -163,6 +170,11 @@ def main():
         torch.cuda.manual_seed_all(seed)
 
     Path(args.out_dir).mkdir(parents=True, exist_ok=True)
+    log_file = None
+    if is_main_process():
+        log_path = Path(args.out_dir) / "stage1.log"
+        log_file = open(log_path, "a", encoding="utf-8")
+        log_message(f"[stage1] logging to {log_path}", log_file)
 
     train_set = PairedUIRDataset(args.data_root, crop_size=args.crop_size, augment=True)
     train_sampler = None
@@ -187,7 +199,8 @@ def main():
 
     val_loader = None
     if args.val_root and is_main_process():
-        val_set = PairedUIRDataset(args.val_root, crop_size=args.crop_size, augment=False)
+        val_set = PairedUIRDataset(args.val_root, crop_size=args.crop_size,
+                                   augment=False, resize_to=256)
         val_loader = DataLoader(val_set, batch_size=1, shuffle=False, num_workers=2)
 
     cfg = UniUIRConfig(depth_backend=args.depth_backend)
@@ -195,7 +208,8 @@ def main():
     base_model = model
     base_model.freeze_for_stage1()
     if is_main_process():
-        print(f"[stage1] trainable params (M): {count_trainable_params(base_model):.2f}")
+        log_message(f"[stage1] trainable params (M): {count_trainable_params(base_model):.2f}",
+                    log_file)
 
     train_params = list(base_model.backbone.parameters()) + list(base_model.sfpg.parameters())
     optimizer = torch.optim.AdamW(
@@ -210,13 +224,15 @@ def main():
     ).to(device)
 
     start_iter = 0
+    best_psnr = float("-inf")
     if args.resume and os.path.isfile(args.resume):
         ckpt = torch.load(args.resume, map_location="cpu")
         base_model.load_state_dict(ckpt["model"], strict=False)
         optimizer.load_state_dict(ckpt["optimizer"])
         start_iter = ckpt["iter"]
+        best_psnr = ckpt.get("best_psnr", best_psnr)
         if is_main_process():
-            print(f"[stage1] resumed from {args.resume} at iter {start_iter}")
+            log_message(f"[stage1] resumed from {args.resume} at iter {start_iter}", log_file)
 
     if distributed:
         local_rank = int(os.environ["LOCAL_RANK"])
@@ -234,87 +250,110 @@ def main():
     model.train()
     unwrap_model(model).depth_predictor.eval()
 
-    for it in range(start_iter, args.total_iters):
-        lr = cosine_lr(it, args.total_iters, args.lr, args.min_lr)
-        set_lr(optimizer, lr)
+    try:
+        for it in range(start_iter, args.total_iters):
+            lr = cosine_lr(it, args.total_iters, args.lr, args.min_lr)
+            set_lr(optimizer, lr)
 
-        batch = next(train_iter)
-        x_lq = batch["x_lq"].to(device, non_blocking=True)
-        x_gt = batch["x_gt"].to(device, non_blocking=True)
+            batch = next(train_iter)
+            x_lq = batch["x_lq"].to(device, non_blocking=True)
+            x_gt = batch["x_gt"].to(device, non_blocking=True)
 
-        out = model(x_lq, x_gt, mode="stage1")
-        with torch.no_grad():
-            d_pseudo = unwrap_model(model).depth_predictor(x_gt.clamp(0, 1))
+            out = model(x_lq, x_gt, mode="stage1")
+            with torch.no_grad():
+                d_pseudo = unwrap_model(model).depth_predictor(x_gt.clamp(0, 1))
 
-        loss, log = criterion(out["x_hq"], x_gt, d_pseudo, out["depth_hq"])
+            loss, log = criterion(out["x_hq"], x_gt, d_pseudo, out["depth_hq"])
 
-        if is_main_process() and it < args.debug_iters:
-            lq_min, lq_max, lq_mean = tensor_stats(x_lq)
-            gt_min, gt_max, gt_mean = tensor_stats(x_gt)
-            hq_min, hq_max, hq_mean = tensor_stats(out["x_hq"])
-            dp_min, dp_max, dp_mean = tensor_stats(d_pseudo)
-            dh_min, dh_max, dh_mean = tensor_stats(out["depth_hq"])
-            print(
-                f"[stage1][debug][{it+1:>4d}] "
-                f"x_lq=({lq_min:.4f},{lq_max:.4f},{lq_mean:.4f}) "
-                f"x_gt=({gt_min:.4f},{gt_max:.4f},{gt_mean:.4f}) "
-                f"x_hq=({hq_min:.4f},{hq_max:.4f},{hq_mean:.4f}) "
-                f"d_gt=({dp_min:.4f},{dp_max:.4f},{dp_mean:.4f}) "
-                f"d_hq=({dh_min:.4f},{dh_max:.4f},{dh_mean:.4f}) "
-                f"pix={log['pix'].item():.4f} dep={log['depth'].item():.4f}"
-            )
-
-        optimizer.zero_grad(set_to_none=True)
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(train_params, max_norm=1.0)
-        optimizer.step()
-
-        pix_value = reduce_mean(log["pix"].item(), device)
-        dep_value = reduce_mean(log["depth"].item(), device)
-        pix_meter.update(pix_value)
-        dep_meter.update(dep_value)
-
-        if (it + 1) % args.log_every == 0 and is_main_process():
-            elapsed = time.time() - t0
-            print(
-                f"[stage1][{it+1:>6d}/{args.total_iters}] "
-                f"lr={lr:.2e} pix={pix_meter.avg:.4f} dep={dep_meter.avg:.4f} "
-                f"({elapsed:.1f}s)"
-            )
-            pix_meter, dep_meter = AverageMeter(), AverageMeter()
-            t0 = time.time()
-
-        if (it + 1) % args.val_every == 0 and args.val_root:
-            if distributed:
-                dist.barrier()
-            if val_loader is not None:
-                val_psnr, val_ssim = validate(unwrap_model(model), val_loader, device)
-                print(f"[stage1][val] psnr={val_psnr:.3f} ssim={val_ssim:.4f}")
-            if distributed:
-                dist.barrier()
-            model.train()
-            unwrap_model(model).depth_predictor.eval()
-
-        if (it + 1) % args.ckpt_every == 0 or (it + 1) == args.total_iters:
-            if is_main_process():
-                state_dict = unwrap_model(model).state_dict()
-                save_checkpoint(
-                    {
-                        "iter": it + 1,
-                        "model": state_dict,
-                        "optimizer": optimizer.state_dict(),
-                        "args": vars(args),
-                    },
-                    os.path.join(args.out_dir, f"stage1_{it+1:06d}.pth"),
-                )
-                save_checkpoint(
-                    {"iter": it + 1, "model": state_dict},
-                    os.path.join(args.out_dir, "stage1_latest.pth"),
+            if is_main_process() and it < args.debug_iters:
+                lq_min, lq_max, lq_mean = tensor_stats(x_lq)
+                gt_min, gt_max, gt_mean = tensor_stats(x_gt)
+                hq_min, hq_max, hq_mean = tensor_stats(out["x_hq"])
+                dp_min, dp_max, dp_mean = tensor_stats(d_pseudo)
+                dh_min, dh_max, dh_mean = tensor_stats(out["depth_hq"])
+                log_message(
+                    f"[stage1][debug][{it+1:>4d}] "
+                    f"x_lq=({lq_min:.4f},{lq_max:.4f},{lq_mean:.4f}) "
+                    f"x_gt=({gt_min:.4f},{gt_max:.4f},{gt_mean:.4f}) "
+                    f"x_hq=({hq_min:.4f},{hq_max:.4f},{hq_mean:.4f}) "
+                    f"d_gt=({dp_min:.4f},{dp_max:.4f},{dp_mean:.4f}) "
+                    f"d_hq=({dh_min:.4f},{dh_max:.4f},{dh_mean:.4f}) "
+                    f"pix={log['pix'].item():.4f} dep={log['depth'].item():.4f}",
+                    log_file,
                 )
 
-    if is_main_process():
-        print("[stage1] done.")
-    cleanup_distributed()
+            optimizer.zero_grad(set_to_none=True)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(train_params, max_norm=1.0)
+            optimizer.step()
+
+            pix_value = reduce_mean(log["pix"].item(), device)
+            dep_value = reduce_mean(log["depth"].item(), device)
+            pix_meter.update(pix_value)
+            dep_meter.update(dep_value)
+
+            if (it + 1) % args.log_every == 0 and is_main_process():
+                elapsed = time.time() - t0
+                log_message(
+                    f"[stage1][{it+1:>6d}/{args.total_iters}] "
+                    f"lr={lr:.2e} pix={pix_meter.avg:.4f} dep={dep_meter.avg:.4f} "
+                    f"({elapsed:.1f}s)",
+                    log_file,
+                )
+                pix_meter, dep_meter = AverageMeter(), AverageMeter()
+                t0 = time.time()
+
+            if (it + 1) % args.val_every == 0 and args.val_root:
+                if distributed:
+                    dist.barrier()
+                if val_loader is not None:
+                    val_psnr, val_ssim = validate(unwrap_model(model), val_loader, device)
+                    is_best = val_psnr > best_psnr
+                    if is_best:
+                        best_psnr = val_psnr
+                    best_note = " best" if is_best else ""
+                    log_message(
+                        f"[stage1][val] psnr={val_psnr:.3f} ssim={val_ssim:.4f}{best_note}",
+                        log_file,
+                    )
+                    if is_best:
+                        state_dict = unwrap_model(model).state_dict()
+                        save_checkpoint(
+                            {
+                                "iter": it + 1,
+                                "model": state_dict,
+                                "optimizer": optimizer.state_dict(),
+                                "args": vars(args),
+                                "best_psnr": best_psnr,
+                                "val_ssim": val_ssim,
+                            },
+                            os.path.join(args.out_dir, "stage1_best.pth"),
+                        )
+                if distributed:
+                    dist.barrier()
+                model.train()
+                unwrap_model(model).depth_predictor.eval()
+
+            if (it + 1) % args.ckpt_every == 0 or (it + 1) == args.total_iters:
+                if is_main_process():
+                    state_dict = unwrap_model(model).state_dict()
+                    save_checkpoint(
+                        {
+                            "iter": it + 1,
+                            "model": state_dict,
+                            "optimizer": optimizer.state_dict(),
+                            "args": vars(args),
+                            "best_psnr": best_psnr,
+                        },
+                        os.path.join(args.out_dir, "stage1_latest.pth"),
+                    )
+
+        if is_main_process():
+            log_message("[stage1] done.", log_file)
+    finally:
+        if log_file is not None:
+            log_file.close()
+        cleanup_distributed()
 
 
 if __name__ == "__main__":
