@@ -21,18 +21,32 @@ This is the official PyTorch implementation for our paper:
 
 ## :hammer_and_wrench: Environment
 
+Recommended environment:
+
 ```bash
 conda create -n uniuir python=3.10 -y
 conda activate uniuir
 
-# Install PyTorch according to your CUDA version from https://pytorch.org/
-pip install torch torchvision torchaudio
+# Install PyTorch according to your CUDA version.
+# Example for CUDA 12.1:
+pip install torch==2.4.1+cu121 torchvision --extra-index-url https://download.pytorch.org/whl/cu121
 
-# Common dependencies
-pip install numpy pillow tqdm pandas opencv-python einops timm
+pip install numpy pillow einops timm transformers>=4.40
+pip install mamba-ssm causal-conv1d>=1.4.0
+```
 
-# Metrics dependencies
-pip install torchmetrics lpips
+`mamba-ssm` and `causal-conv1d` must match your Python, PyTorch, CUDA, and CXX11 ABI. For your current `slurpp` environment we previously matched:
+
+```text
+Python 3.10
+torch 2.4.1+cu121
+causal_conv1d-*+cu12torch2.4cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
+```
+
+Verify the Mamba dependency before training:
+
+```bash
+python -c "from mamba_ssm.ops.selective_scan_interface import selective_scan_fn; print('mamba ok')"
 ```
 
 
@@ -75,35 +89,6 @@ UniUIR/
 
 `checkpoints/` is generated during training. Python cache folders are omitted from the structure.
 
-## Environment
-
-Recommended environment:
-
-```bash
-conda create -n uniuir python=3.10 -y
-conda activate uniuir
-
-# Install PyTorch according to your CUDA version.
-# Example for CUDA 12.1:
-pip install torch==2.4.1+cu121 torchvision --extra-index-url https://download.pytorch.org/whl/cu121
-
-pip install numpy pillow einops timm transformers>=4.40
-pip install mamba-ssm causal-conv1d>=1.4.0
-```
-
-`mamba-ssm` and `causal-conv1d` must match your Python, PyTorch, CUDA, and CXX11 ABI. For your current `slurpp` environment we previously matched:
-
-```text
-Python 3.10
-torch 2.4.1+cu121
-causal_conv1d-*+cu12torch2.4cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
-```
-
-Verify the Mamba dependency before training:
-
-```bash
-python -c "from mamba_ssm.ops.selective_scan_interface import selective_scan_fn; print('mamba ok')"
-```
 
 ## Data Preparation
 
