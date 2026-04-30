@@ -57,25 +57,25 @@ UniUIR/
 ├── README.md
 ├── requirements.txt
 ├── __init__.py
-├── train_stage1.py              # Stage I training, supports DDP
-├── train_stage2.py              # Stage II training, supports DDP
-├── inference.py                 # Folder inference for test images
+├── train_stage1.py              
+├── train_stage2.py             
+├── inference.py                 
 ├── datasets/
 │   ├── __init__.py
-│   └── uir_dataset.py           # Paired and unpaired image datasets
+│   └── uir_dataset.py          
 ├── losses/
 │   ├── __init__.py
-│   └── losses.py                # Stage I/II losses and depth gradient loss
+│   └── losses.py               
 ├── models/
 │   ├── __init__.py
-│   ├── uniuir.py                # Full UniUIR pipeline
-│   ├── mmoe_uir.py              # MMoE-UIR backbone with SS2D + W-MoE
-│   ├── sfpg.py                  # SFPG and SFPG*
-│   ├── lcdm.py                  # Latent Conditional Diffusion Model
-│   └── depth_extractor.py       # Depth Anything V2 HF wrapper and dummy fallback
+│   ├── uniuir.py                
+│   ├── mmoe_uir.py             
+│   ├── sfpg.py                  
+│   ├── lcdm.py                
+│   └── depth_extractor.py       
 ├── utils/
 │   ├── __init__.py
-│   └── utils.py                 # PSNR, SSIM, LR schedule, checkpoint helpers
+│   └── utils.py                
 └── checkpoints/
     ├── stage1/
     │   ├── stage1.log
